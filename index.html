@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MAB Automatización SPA — Ingeniería eléctrica y automatización industrial</title>
+  <meta name="description" content="Proyectos eléctricos y de automatización industrial en Chile. Desde la ingeniería conceptual hasta la puesta en servicio. Integradores oficiales de iluminación Roblan." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #070d19;
+      --bg-elev: #0a1628;
+      --bg-card: #0e1c33;
+      --line: rgba(148, 177, 219, 0.12);
+      --line-strong: rgba(148, 177, 219, 0.22);
+      --text: #e8eef8;
+      --text-dim: #8ea0bd;
+      --text-faint: #5c6b85;
+      --amber: #f5a623;
+      --amber-soft: #fbbf4e;
+      --amber-deep: #c07a12;
+      --blue: #2a6fc9;
+      --blue-light: #4a9dff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    body { font-size: 16px; line-height: 1.6; }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; font-weight: 500; letter-spacing: -0.02em; margin: 0; line-height: 1.05; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+
+    /* Global scanlines / grid backdrop */
+    .grid-bg {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(148,177,219,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148,177,219,0.04) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    }
+    .noise { position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0.025; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+
+    main { position: relative; z-index: 2; }
+
+    /* Reveal animation */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.9s cubic-bezier(.2,.7,.2,1), transform 0.9s cubic-bezier(.2,.7,.2,1); }
+    .reveal.is-in { opacity: 1; transform: none; }
+
+    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    input, textarea, select { font-family: inherit; color: inherit; }
+
+    ::selection { background: var(--amber); color: #0a0a0a; }
+
+    /* Tweaks panel */
+    #tweaks-panel { position: fixed; bottom: 20px; right: 20px; width: 280px; background: #0a1220; border: 1px solid var(--line-strong); border-radius: 10px; padding: 16px; z-index: 9999; display: none; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+    #tweaks-panel.show { display: block; }
+    #tweaks-panel h4 { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; color: var(--amber); }
+    #tweaks-panel label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 6px; }
+    #tweaks-panel .row { margin-bottom: 14px; }
+    #tweaks-panel .seg { display: flex; gap: 4px; background: #050a15; padding: 4px; border-radius: 6px; }
+    #tweaks-panel .seg button { flex: 1; padding: 8px 4px; font-size: 11px; color: var(--text-dim); border-radius: 4px; }
+    #tweaks-panel .seg button.active { background: var(--amber); color: #0a0a0a; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="noise"></div>
+
+  <template id="__bundler_thumbnail">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+      <rect width="400" height="400" fill="#070d19"/>
+      <g transform="translate(200 200)">
+        <circle r="90" fill="none" stroke="#f5a623" stroke-width="2" stroke-dasharray="4 6"/>
+        <text text-anchor="middle" y="8" font-family="sans-serif" font-size="56" font-weight="700" fill="#f5a623">MAB</text>
+      </g>
+    </svg>
+  </template>
+
+  <div id="root"></div>
+
+  <div id="tweaks-panel">
+    <h4>Tweaks</h4>
+    <div class="row">
+      <label>Variante de Hero</label>
+      <div class="seg" id="tw-hero">
+        <button data-v="terminal">Terminal</button>
+        <button data-v="circuit">Circuito</button>
+        <button data-v="data">Datos</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Acento</label>
+      <div class="seg" id="tw-accent">
+        <button data-v="amber">Ámbar</button>
+        <button data-v="cyan">Cian</button>
+        <button data-v="lime">Lima</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Densidad grid</label>
+      <div class="seg" id="tw-grid">
+        <button data-v="off">Off</button>
+        <button data-v="on">On</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script>
+    // Tweak defaults (persisted via EDITMODE)
+    window.TWEAKS = /*EDITMODE-BEGIN*/{
+      "heroVariant": "circuit",
+      "accent": "amber",
+      "grid": "on"
+    }/*EDITMODE-END*/;
+  </script>
+
+  <script type="text/babel" src="src/components.jsx"></script>
+  <script type="text/babel" src="src/hero.jsx"></script>
+  <script type="text/babel" src="src/sections.jsx"></script>
+  <script type="text/babel" src="src/app.jsx"></script>
+
+  <script>
+    // Tweaks / edit mode plumbing
+    (function () {
+      const panel = document.getElementById('tweaks-panel');
+      function applyAccent(v) {
+        const map = {
+          amber: ['#f5a623', '#fbbf4e', '#c07a12'],
+          cyan: ['#22d3ee', '#67e8f9', '#0891b2'],
+          lime: ['#a3e635', '#bef264', '#65a30d'],
+        };
+        const [a, s, d] = map[v] || map.amber;
+        document.documentElement.style.setProperty('--amber', a);
+        document.documentElement.style.setProperty('--amber-soft', s);
+        document.documentElement.style.setProperty('--amber-deep', d);
+      }
+      function applyGrid(v) {
+        document.querySelector('.grid-bg').style.display = v === 'off' ? 'none' : '';
+      }
+      function renderActive() {
+        ['hero','accent','grid'].forEach(k => {
+          const keyMap = { hero: 'heroVariant', accent: 'accent', grid: 'grid' };
+          const val = window.TWEAKS[keyMap[k]];
+          document.querySelectorAll(`#tw-${k} button`).forEach(b => {
+            b.classList.toggle('active', b.dataset.v === val);
+          });
+        });
+      }
+      function persist(key, val) {
+        window.TWEAKS[key] = val;
+        window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [key]: val } }, '*');
+        renderActive();
+        if (key === 'accent') applyAccent(val);
+        if (key === 'grid') applyGrid(val);
+        if (key === 'heroVariant') window.dispatchEvent(new CustomEvent('mab:heroVariant', { detail: val }));
+      }
+      document.querySelectorAll('#tw-hero button').forEach(b => b.onclick = () => persist('heroVariant', b.dataset.v));
+      document.querySelectorAll('#tw-accent button').forEach(b => b.onclick = () => persist('accent', b.dataset.v));
+      document.querySelectorAll('#tw-grid button').forEach(b => b.onclick = () => persist('grid', b.dataset.v));
+
+      window.addEventListener('message', (e) => {
+        if (!e.data || typeof e.data !== 'object') return;
+        if (e.data.type === '__activate_edit_mode') panel.classList.add('show');
+        if (e.data.type === '__deactivate_edit_mode') panel.classList.remove('show');
+      });
+      window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+
+      // Apply initial tweaks
+      applyAccent(window.TWEAKS.accent);
+      applyGrid(window.TWEAKS.grid);
+      renderActive();
+    })();
+  </script>
+</body>
+</html>
